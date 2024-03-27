@@ -77,21 +77,32 @@ const Credit = sequelize.define("Credit", {
 });
 
 // Define the Booking model
-const Booking = sequelize.define("Booking", {
-  time: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    validate: {
-      isDate: true,
-      isAfter: new Date().toISOString(),
+const Booking = sequelize.define(
+  "Booking",
+  {
+    time: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      validate: {
+        isDate: true,
+        isAfter: new Date().toISOString(),
+      },
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending", // Default status
     },
   },
-  status: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: "pending", // Default status
-  },
-});
+  {
+    indexes: [
+      {
+        unique: false,
+        fields: ["status"],
+      },
+    ],
+  }
+);
 
 const BookingStatusHistory = sequelize.define("BookingStatusHistory", {
   status: {
