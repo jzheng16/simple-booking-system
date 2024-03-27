@@ -167,7 +167,7 @@ async function getStats(providerId) {
         ],
       ],
       where: {
-        provider: providerId,
+        ProviderId: providerId,
         [sequelize.Op.or]: [{ status: "canceled" }, { status: "rescheduled" }],
       },
     });
@@ -224,7 +224,7 @@ async function getCreditsUsedStats(patientId) {
         },
       ],
       where: {
-        patient: patientId,
+        PatientId: patientId,
         status: "confirmed",
       },
       group: ["month", "year"],
@@ -254,7 +254,7 @@ async function getCreditsUsedStats(patientId) {
 
 // Endpoint to create a booking with an unused credit
 app.post("/bookings", async (req: Request, res: Response) => {
-  const { time, patient, provider } = req.body;
+  const { time, patientId, providerId } = req.body;
 
   try {
     // Find an unused credit that is not expired
@@ -275,7 +275,11 @@ app.post("/bookings", async (req: Request, res: Response) => {
     }
 
     // Create a booking associated with the credit
-    const booking = await Booking.create({ time, patient, provider });
+    const booking = await Booking.create({
+      time,
+      PatientId: patientId,
+      ProviderId: providerId,
+    });
 
     // Record the initial status in the booking status history
     await BookingStatusHistory.create({ status, BookingId: booking.id });
@@ -351,7 +355,7 @@ app.get("/credits/:patientId", async (req: Request, res: Response) => {
     // get credits for the specified patient
     const credits = await Credit.findAll({
       where: {
-        patient: patientId,
+        PatientId: PatientId,
       },
     });
     // Retrieve the monthly credits used statistics from the database for the specified patient
