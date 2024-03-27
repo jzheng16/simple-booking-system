@@ -31,6 +31,35 @@ const sequelize = new Sequelize(
   }
 );
 
+// Define user table to store patient / provider information
+const User = sequelize.define(
+  "User",
+  {
+    email: {
+      type: DataTypes.String,
+      allowNull: false,
+    },
+    firstName: {
+      type: DataTypes.String,
+      allowNull: false,
+    },
+    lastName: {
+      type: DataTypes.String,
+      allowNull: false,
+    },
+    // Add any other relevant fields
+  },
+  {
+    indexes: [
+      // Create a unique index on email
+      {
+        unique: true,
+        fields: ["email"],
+      },
+    ],
+  }
+);
+
 // Define the Credit model
 const Credit = sequelize.define("Credit", {
   type: {
