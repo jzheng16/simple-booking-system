@@ -8,14 +8,15 @@ Please also allow to show the provider some statistic about bookings getting can
 */
 
 import express, { Request, Response } from "express";
-import bodyParser from "body-parser";
 import { Sequelize, DataTypes } from "sequelize";
 
 const app = express();
 const port = 3000;
 
 // Middleware to parse JSON requests
-app.use(bodyParser.json());
+app.use(express.json());
+// Parse form url encoded data as well
+app.use(express.urlencoded({ extended: true }));
 
 // Create a single persistent MySQL database connection pool
 const sequelize = new Sequelize(
