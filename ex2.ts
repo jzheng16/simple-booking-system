@@ -132,19 +132,6 @@ Credit.hasOne(Booking);
 Booking.hasMany(BookingStatusHistory);
 BookingStatusHistory.belongsTo(Booking);
 
-// Function to execute database queries
-async function executeQuery(query: string, params: any[] = []) {
-  const connection = await sequelize.getConnection();
-  try {
-    const [rows] = await connection.query(query, params);
-    return rows;
-  } catch (error) {
-    throw error;
-  } finally {
-    connection.release();
-  }
-}
-
 // Function to get statistics on canceled and rescheduled bookings for a specific provider
 async function getStats(providerId) {
   try {
