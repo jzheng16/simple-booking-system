@@ -86,14 +86,6 @@ const Booking = sequelize.define("Booking", {
       isAfter: new Date().toISOString(),
     },
   },
-  patient: {
-    type: DataTypes.STRING,
-    allowNull: true, // Allow anonymous bookings
-  },
-  provider: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
   status: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -112,6 +104,10 @@ const BookingStatusHistory = sequelize.define("BookingStatusHistory", {
     defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
   },
 });
+
+// Define relationship between User and Booking
+User.hasMany(Booking);
+Booking.belongsTo(User);
 
 // Define the relationship between Booking and Credit
 Booking.belongsTo(Credit);
