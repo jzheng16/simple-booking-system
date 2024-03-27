@@ -9,6 +9,7 @@ Please also allow to show the provider some statistic about bookings getting can
 
 import express, { Request, Response } from "express";
 import { Sequelize, DataTypes } from "sequelize";
+require("dotenv").config();
 
 const app = express();
 const port = 3000;
@@ -20,9 +21,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Create a single persistent MySQL database connection pool
 const sequelize = new Sequelize(
-  "your_db_name",
-  "your_db_user",
-  "your_db_password",
+  process.env.DATABASE_NAME,
+  process.env.DATABASE_USERNAME,
+  process.env.DATABASE_PASSWORD,
   {
     host: "localhost",
     dialect: "mysql", // Use the appropriate database dialect
