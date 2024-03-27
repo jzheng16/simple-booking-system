@@ -120,6 +120,10 @@ const BookingStatusHistory = sequelize.define("BookingStatusHistory", {
 User.hasMany(Booking);
 Booking.belongsTo(User);
 
+// Define relationship between User and Credit
+User.hasMany(Credit);
+Credit.belongsTo(User);
+
 // Define the relationship between Booking and Credit
 Booking.belongsTo(Credit);
 Credit.hasOne(Booking);
