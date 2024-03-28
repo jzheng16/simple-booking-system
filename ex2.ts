@@ -334,7 +334,7 @@ app.get("/bookings", async (req: Request<{}, {}, {}, BookingsRequestQuery>, res:
       // Retrieve bookings from the database for the specified user
       const bookings = await Booking.findAll({
         where: {
-          [sequelize.Op.or]: [{ patient: userId }, { provider: userId }],
+          [sequelize.Op.or]: [{ patientId: userId }, { providerId: userId }],
         },
       });
 
