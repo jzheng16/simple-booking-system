@@ -253,124 +253,167 @@ async function getCreditsUsedStats(
   }
 }
 
+interface BookingRequestBody {
+  time: Date;
+  patientId: string;
+  providerId: string;
+}
+
 // Endpoint to create a booking with an unused credit
-app.post("/bookings", async (req: Request, res: Response) => {
-  const { time, patientId, providerId } = req.body;
+app.post("/bookings", async (req: Request<{}, {}, BookingRequestBody>, res: Response) => {
+    const { time, patientId, providerId } = req.body;
 
-  try {
-    // Find an unused credit that is not expired
-    const d = new Date();
-    const credit = await Credit.findOne({
-      where: {
-        expirationDate: {
-          [sequelize.Op.gt]: d, // Expiration date is greater than the current date
-        },
-        BookingId: null, // Credit is not associated with any booking
-      },
-    });
-
-    if (!credit) {
+    // parseInt is used to check if both patientId and provider are valid integers
+    // Sequelize by default creates foreign keys as integers
+    if (!time || !parseInt(patientId) || !parseInt(providerId)) {
       return res
-        .status(404)
-        .json({ error: "No unused, non-expired credits found." });
+        .status(400)
+        .json({ error: "Time, patientId, and providerId must be provided." });
     }
 
-    // Create a booking associated with the credit
-    const booking = await Booking.create({
-      time,
-      PatientId: patientId,
-      ProviderId: providerId,
-    });
+    try {
+      // Find an unused credit that is not expired
+      const d = new Date();
+      const credit = await Credit.findOne({
+        where: {
+          expirationDate: {
+            [sequelize.Op.gt]: d, // Expiration date is greater than the current date
+          },
+          BookingId: null, // Credit is not associated with any booking
+        },
+      });
 
-    // Record the initial status in the booking status history
-    await BookingStatusHistory.create({ status, BookingId: booking.id });
+      if (!credit) {
+        return res
+          .status(404)
+          .json({ error: "No unused, non-expired credits found." });
+      }
 
-    // Associate the booking with the credit
-    await booking.setCredit(credit);
+      // Create a booking associated with the credit
+      const booking = await Booking.create({
+        time,
+        PatientId: patientId,
+        ProviderId: providerId,
+      });
 
-    res.status(201).json({
-      message: "Booking created successfully",
-      booking: booking.toJSON(),
-    });
-  } catch (error) {
-    console.error("Error creating booking:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while creating the booking." });
+      // Record the initial status in the booking status history
+      await BookingStatusHistory.create({ status, BookingId: booking.id });
+
+      // Associate the booking with the credit
+      await booking.setCredit(credit);
+
+      res.status(201).json({
+        message: "Booking created successfully",
+        booking: booking.toJSON(),
+      });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while creating the booking." });
+    }
   }
-});
+);
 
 // Endpoint to retrieve bookings for a specific user (patient or provider)
-app.get("/bookings", async (req: Request, res: Response) => {
-  const { userId } = req.query;
 
-  if (!userId) {
-    return res
-      .status(400)
-      .json({ error: "User ID must be provided as a query parameter." });
+interface BookingsRequestQuery {
+  userId: string;
+}
+
+app.get("/bookings", async (req: Request<{}, {}, {}, BookingsRequestQuery>, res: Response) => {
+    const { userId } = req.query;
+
+    if (!userId || !parseInt(userId)) {
+      return res
+        .status(400)
+        .json({ error: "User ID must be provided as a query parameter." });
+    }
+
+    try {
+      // Retrieve bookings from the database for the specified user
+      const bookings = await Booking.findAll({
+        where: {
+          [sequelize.Op.or]: [{ patient: userId }, { provider: userId }],
+        },
+      });
+
+      let stats = [];
+      if (bookings?.[0].provider === userId) stats = await getStats(userId);
+
+      res.status(200).json({ bookings, stats });
+    } catch (error) {
+      console.error("Error retrieving bookings:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while retrieving bookings." });
+    }
   }
+);
 
-  try {
-    // Retrieve bookings from the database for the specified user
-    const bookings = await Booking.findAll({
-      where: {
-        [sequelize.Op.or]: [{ patient: userId }, { provider: userId }],
-      },
-    });
+interface BookingHistoryRequestParams {
+  bookingId: string;
+}
 
-    let stats = [];
-    if (bookings?.[0].provider === userId) stats = await getStats(userId);
+app.get("/bookings/:bookingId/history", async (req: Request<BookingHistoryRequestParams>, res: Response) => {
+    const { bookingId } = req.params;
 
-    res.status(200).json({ bookings, stats });
-  } catch (error) {
-    console.error("Error retrieving bookings:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while retrieving bookings." });
+    if (!bookingId || !parseInt(bookingId)) {
+      return res
+        .status(400)
+        .json({ error: "Booking ID must be provided as a query parameter." });
+    }
+
+    try {
+      // Retrieve the booking status history from the database for the specified booking
+      const history = await BookingStatusHistory.findAll({
+        where: { BookingId: bookingId },
+        order: [["timestamp", "ASC"]], // Order by timestamp in ascending order
+      });
+
+      res.status(200).json({ history });
+    } catch (error) {
+      console.error("Error retrieving booking status history:", error);
+      res.status(500).json({
+        error: "An error occurred while retrieving booking status history.",
+      });
+    }
   }
-});
+);
 
-app.get("/bookings/:bookingId/history", async (req: Request, res: Response) => {
-  const { bookingId } = req.params;
+interface PatientCreditRequestParams {
+  patientId: string;
+}
 
-  try {
-    // Retrieve the booking status history from the database for the specified booking
-    const history = await BookingStatusHistory.findAll({
-      where: { BookingId: bookingId },
-      order: [["timestamp", "ASC"]], // Order by timestamp in ascending order
-    });
+app.get("/credits/:patientId", async (req: Request<PatientCreditRequestParams>, res: Response) => {
+    const { patientId } = req.params;
 
-    res.status(200).json({ history });
-  } catch (error) {
-    console.error("Error retrieving booking status history:", error);
-    res.status(500).json({
-      error: "An error occurred while retrieving booking status history.",
-    });
+    if (!patientId || !parseInt(patientId)) {
+      return res
+        .status(400)
+        .json({ error: "Patient ID must be provided as a query parameter." });
+    }
+
+    try {
+      // get credits for the specified patient
+      const credits = await Credit.findAll({
+        where: {
+          PatientId: PatientId,
+        },
+      });
+      // Retrieve the monthly credits used statistics from the database for the specified patient
+      const stats = await getCreditsUsedStats(patientId);
+
+      res.status(200).json({ credits, stats });
+    } catch (error) {
+      console.error("Error retrieving monthly credits used statistics:", error);
+      res.status(500).json({
+        error:
+          "An error occurred while retrieving monthly credits used statistics.",
+      });
+    }
   }
-});
-
-app.get("/credits/:patientId", async (req: Request, res: Response) => {
-  const { patientId } = req.params;
-
-  try {
-    // get credits for the specified patient
-    const credits = await Credit.findAll({
-      where: {
-        PatientId: PatientId,
-      },
-    });
-    // Retrieve the monthly credits used statistics from the database for the specified patient
-    const stats = await getCreditsUsedStats(patientId);
-
-    res.status(200).json({ credits, stats });
-  } catch (error) {
-    console.error("Error retrieving monthly credits used statistics:", error);
-    res.status(500).json({
-      error:
-        "An error occurred while retrieving monthly credits used statistics.",
-    });
-  }
-});
+);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
