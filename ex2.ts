@@ -133,7 +133,7 @@ Booking.hasMany(BookingStatusHistory);
 BookingStatusHistory.belongsTo(Booking);
 
 // Function to get statistics on canceled and rescheduled bookings for a specific provider
-async function getStats(providerId) {
+async function getStats(providerId): Promise<[number, number]> {
   try {
     // Retrieve canceled and rescheduled bookings for the specified provider
     const stats = await Booking.findAll({
@@ -181,7 +181,17 @@ async function getStats(providerId) {
 }
 
 // Function to get monthly statistics on credits used by a specific patient, including the percentage
-async function getCreditsUsedStats(patientId) {
+
+type MonthlyStatWithPercentage = {
+  totalCreditsUsed: number;
+  month: number;
+  year: number;
+  percentageCreditsUsed: number;
+};
+
+async function getCreditsUsedStats(
+  patientId
+): Promise<MonthlyStatWithPercentage[]> {
   try {
     // Retrieve total credits available for the specified patient
     const totalCreditsQuery = await Credit.sum("type", {
